@@ -1,66 +1,70 @@
 #!/bin/bash
 
+set -euo pipefail
+
 if [[ $# -lt 2 ]]; then
-    echo "Usage: $0 <input_dir> <output_dir> [--max_depth N]"
+    echo "Ошибка: Необходимо указать входную и выходную директории" >&2
+    echo "Использование: $0 <входная_директория> <выходная_директория> [--max-depth N]" >&2
     exit 1
 fi
 
-input_dir="$1"
-output_dir="$2"
-max_depth=0
+input_dir=$(realpath "$1")
+output_dir=$(realpath "$2")
 shift 2
+
+max_depth=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --max_depth)
-            if [[ ! "$2" =~ ^[0-9]+$ ]]; then
-                echo "Error: --max_depth requires positive number"
+        --max-depth)
+            if [[ ! "$2" =~ ^[0-9]+$ || "$2" -le 0 ]]; then
+                echo "Ошибка: --max-depth требует положительное целое число" >&2
                 exit 1
             fi
             max_depth="$2"
             shift 2
             ;;
         *)
-            echo "Unknown option: $1"
+            echo "Неизвестный параметр: $1" >&2
             exit 1
             ;;
     esac
 done
 
 if [[ ! -d "$input_dir" ]]; then
-    echo "Error: Input directory not found"
+    echo "Ошибка: Входная директория не существует: $input_dir" >&2
     exit 1
 fi
 
 mkdir -p "$output_dir"
 
-find "$input_dir" -type f | while read -r file; do
-    rel_path="${file#$input_dir/}"
-    depth=$(( $(tr -cd '/' <<< "$rel_path" | wc -c) + 1 ))
-    
+find "$input_dir" -type f | while read -r src_file; do
+    relative_path="${src_file#$input_dir/}"
+    depth=$(( $(grep -o '/' <<< "$relative_path" | wc -l) + 1 ))
+
     if [[ $max_depth -gt 0 && $depth -gt $max_depth ]]; then
         continue
     fi
-    
-    filename=$(basename "$file")
-    dest="$output_dir/$filename"
+
+    base_name=$(basename "$src_file")
+    dest_file="$output_dir/$base_name"
     counter=1
-    
-    while [[ -e "$dest" ]]; do
-        name="${filename%.*}"
-        ext="${filename##*.}"
+
+    while [[ -e "$dest_file" ]]; do
+        name_part="${base_name%.*}"
+        ext_part="${base_name##*.}"
         
-        if [[ "$name" != "$ext" ]]; then
-            dest="$output_dir/${name}_$counter.$ext"
+        if [[ "$name_part" != "$ext_part" ]]; then
+            dest_file="$output_dir/${name_part}_$counter.$ext_part"
         else
-            dest="$output_dir/${name}_$counter"
+            dest_file="$output_dir/${base_name}_$counter"
         fi
         
         ((counter++))
     done
-    
-    cp "$file" "$dest"
+
+    cp "$src_file" "$dest_file"
 done
 
-echo "Copied all files to $output_dir"
+echo "Файлы успешно скопированы в $output_dir"
 
