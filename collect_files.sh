@@ -1,84 +1,66 @@
 #!/bin/bash
 
-if [ "$#" -lt 2 ]; then
-    echo "Usage: $0 <input_directory> <output_directory> [--max_depth <depth>]"
+if [[ $# -lt 2 ]]; then
+    echo "Usage: $0 <input_dir> <output_dir> [--max_depth N]"
     exit 1
 fi
 
 input_dir="$1"
 output_dir="$2"
-max_depth=""
-handle_duplicates=true
-
+max_depth=0
 shift 2
-while [ "$#" -gt 0 ]; do
+
+while [[ $# -gt 0 ]]; do
     case "$1" in
         --max_depth)
-            if [ -z "$2" ] || ! [[ "$2" =~ ^[0-9]+$ ]]; then
-                echo "Error: --max_depth requires a positive integer"
+            if [[ ! "$2" =~ ^[0-9]+$ ]]; then
+                echo "Error: --max_depth requires positive number"
                 exit 1
             fi
             max_depth="$2"
             shift 2
             ;;
         *)
-            echo "Unknown parameter: $1"
+            echo "Unknown option: $1"
             exit 1
             ;;
     esac
 done
 
-if [ ! -d "$input_dir" ]; then
-    echo "Error: Input directory does not exist"
+if [[ ! -d "$input_dir" ]]; then
+    echo "Error: Input directory not found"
     exit 1
 fi
 
 mkdir -p "$output_dir"
 
-copy_file() {
-    local src="$1"
-    local dest_dir="$2"
-    local filename=$(basename "$src")
-    local dest_path="$dest_dir/$filename"
-    local counter=1
+find "$input_dir" -type f | while read -r file; do
+    rel_path="${file#$input_dir/}"
+    depth=$(( $(tr -cd '/' <<< "$rel_path" | wc -c) + 1 ))
     
-    if [ "$handle_duplicates" = true ] && [ -e "$dest_path" ]; then
-        local name="${filename%.*}"
-        local extension="${filename##*.}"
+    if [[ $max_depth -gt 0 && $depth -gt $max_depth ]]; then
+        continue
+    fi
+    
+    filename=$(basename "$file")
+    dest="$output_dir/$filename"
+    counter=1
+    
+    while [[ -e "$dest" ]]; do
+        name="${filename%.*}"
+        ext="${filename##*.}"
         
-        if [ "$name" != "$extension" ]; then
-            while [ -e "$dest_dir/${name}${counter}.${extension}" ]; do
-                ((counter++))
-            done
-            dest_path="$dest_dir/${name}${counter}.${extension}"
+        if [[ "$name" != "$ext" ]]; then
+            dest="$output_dir/${name}_$counter.$ext"
         else
-            while [ -e "$dest_dir/${name}${counter}" ]; do
-                ((counter++))
-            done
-            dest_path="$dest_dir/${name}${counter}"
+            dest="$output_dir/${name}_$counter"
         fi
-    fi
-    
-    cp "$src" "$dest_path"
-}
-
-process_directory() {
-    local current_dir="$1"
-    local current_depth="$2"
-    
-    if [ -n "$max_depth" ] && [ "$current_depth" -gt "$max_depth" ]; then
-        return
-    fi
-    
-    for item in "$current_dir"/*; do
-        if [ -f "$item" ]; then
-            copy_file "$item" "$output_dir"
-        elif [ -d "$item" ]; then
-            process_directory "$item" $((current_depth + 1))
-        fi
+        
+        ((counter++))
     done
-}
+    
+    cp "$file" "$dest"
+done
 
-process_directory "$input_dir" 1
+echo "Copied all files to $output_dir"
 
-echo "Files collected successfully to $output_dir"
