@@ -2,12 +2,6 @@
 
 set -euo pipefail
 
-if [[ $# -lt 2 ]]; then
-    echo "Ошибка: Необходимо указать входную и выходную директории" >&2
-    echo "Использование: $0 <входная_директория> <выходная_директория> [--max-depth N]" >&2
-    exit 1
-fi
-
 input_dir=$(realpath "$1")
 output_dir=$(realpath "$2")
 shift 2
@@ -17,30 +11,135 @@ max_depth=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --max-depth)
-            if [[ ! "$2" =~ ^[0-9]+$ || "$2" -le 0 ]]; then
-                echo "Ошибка: --max-depth требует положительное целое число" >&2
-                exit 1
-            fi
             max_depth="$2"
             shift 2
             ;;
         *)
-            echo "Неизвестный параметр: $1" >&2
-            exit 1
-            ;;
     esac
 done
 
-if [[ ! -d "$input_dir" ]]; then
-    echo "Ошибка: Входная директория не существует: $input_dir" >&2
-    exit 1
-fi
 
 mkdir -p "$output_dir"
 
 find "$input_dir" -type f | while read -r src_file; do
     relative_path="${src_file#$input_dir/}"
     depth=$(( $(grep -o '/' <<< "$relative_path" | wc -l) + 1 ))
+#!/bin/bash
+
+if [[ $# -lt 2 ]]; then
+    echo "Usage: $0 <input_dir> <output_dir> [--max_depth N]"
+    exit 1
+fi
+
+input_dir="$1"
+output_dir="$2"
+max_depth=0
+shift 2
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in 
+            (--max_depth)
+            if [[ ! "$2" =~ ^[0-9]+$ ]]; then
+                exit 1
+            fi
+            max_depth="$2"
+            shift 2
+            ;;
+        
+    esac
+done
+
+
+mkdir -p "$output_dir"
+
+find "$input_dir" -type f | while read -r file; do
+    rel_path="${file#$input_dir/}"
+    depth=$(( $(tr -cd '/' <<< "$rel_path" | wc -c) + 1 ))
+    
+    if [[ $max_depth -gt 0 && $depth -gt $max_depth ]]; then
+        continue
+    fi
+    
+    filename=$(basename "$file")
+    dest="$output_dir/$filename"
+    counter=1
+    
+    while [[ -e "$dest" ]]; do
+        name="${filename%.*}"
+        ext="${filename##*.}"
+        
+        if [[ "$name" != "$ext" ]]; then
+            dest="$output_dir/${name}_$counter.$ext"
+        else
+            dest="$output_dir/${name}_$counter"
+        fi
+        
+        ((counter++))
+    done
+    
+    cp "$file" "$dest"
+done
+
+echo "Copied all files to $output_dir"
+
+#!/bin/bash
+
+if [[ $# -lt 2 ]]; then
+    echo "Usage: $0 <input_dir> <output_dir> [--max_depth N]"
+    exit 1
+fi
+
+input_dir="$1"
+output_dir="$2"
+max_depth=0
+shift 2
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in 
+            (--max_depth)
+            if [[ ! "$2" =~ ^[0-9]+$ ]]; then
+                exit 1
+            fi
+            max_depth="$2"
+            shift 2
+            ;;
+        
+    esac
+done
+
+
+mkdir -p "$output_dir"
+
+find "$input_dir" -type f | while read -r file; do
+    rel_path="${file#$input_dir/}"
+    depth=$(( $(tr -cd '/' <<< "$rel_path" | wc -c) + 1 ))
+    
+    if [[ $max_depth -gt 0 && $depth -gt $max_depth ]]; then
+        continue
+    fi
+    
+    filename=$(basename "$file")
+    dest="$output_dir/$filename"
+    counter=1
+    
+    while [[ -e "$dest" ]]; do
+        name="${filename%.*}"
+        ext="${filename##*.}"
+        
+        if [[ "$name" != "$ext" ]]; then
+            dest="$output_dir/${name}_$counter.$ext"
+        else
+            dest="$output_dir/${name}_$counter"
+        fi
+        
+        ((counter++))
+    done
+    
+    cp "$file" "$dest"
+done
+
+echo "Copied all files to $output_dir"
+
 
     if [[ $max_depth -gt 0 && $depth -gt $max_depth ]]; then
         continue
@@ -65,6 +164,3 @@ find "$input_dir" -type f | while read -r src_file; do
 
     cp "$src_file" "$dest_file"
 done
-
-echo "Файлы успешно скопированы в $output_dir"
-
