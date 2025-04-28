@@ -19,27 +19,42 @@ done
 
 mkdir -p "$output_dir"
 
+declare -A file_counters
+
+find_args=(-type f)
 if [ $max_depth -ge 0 ]; then
-    find "$input_dir" -mindepth 1 -maxdepth "$max_depth" | while IFS= read -r path; do
-        rel_path="${path#$input_dir/}"
-        dest="$output_dir/$rel_path"
-        if [ -d "$path" ]; then
-            mkdir -p "$dest"
-        else
-            mkdir -p "$(dirname "$dest")"
-            cp "$path" "$dest"
-        fi
-    done
-else
-    find "$input_dir" -mindepth 1 | while IFS= read -r path; do
-        rel_path="${path#$input_dir/}"
-        dest="$output_dir/$rel_path"
-        if [ -d "$path" ]; then
-            mkdir -p "$dest"
-        else
-            mkdir -p "$(dirname "$dest")"
-            cp "$path" "$dest"
-        fi
-    done
+    find_args+=(-maxdepth "$max_depth")
 fi
 
+find "$input_dir" "${find_args[@]}" | while IFS= read -r file; do
+    relative_path="${file#$input_dir/}"
+    destination="$output_dir/$relative_path"
+
+    if [ -e "$destination" ]; then
+        filename=$(basename "$destination")
+        dir=$(dirname "$destination")
+        base_name="${filename%.*}"
+        extension="${filename##*.}"
+
+        if [ "$base_name" = "$extension" ]; then
+            base_name="${filename}"
+            extension=""
+        fi
+
+        if [ -z ${file_counters["$filename"]} ]; then
+            file_counters["$filename"]=1
+        else
+            file_counters["$filename"]=$((file_counters["$filename"] + 1))
+        fi
+
+        suffix=${file_counters["$filename"]}
+        if [ -n "$extension" ]; then
+            destination="$dir/${base_name}_$suffix.$extension"
+        else
+            destination="$dir/${base_name}_$suffix"
+        fi
+    fi
+
+    mkdir -p "$(dirname "$destination")"
+    cp "$file" "$destination"
+done
