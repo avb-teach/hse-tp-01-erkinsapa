@@ -1,8 +1,11 @@
 #!/bin/bash
 
 input_dir="$1"
+
 output_dir="$2"
+
 max_depth=-1
+
 shift 2
 
 while [ $# -gt 0 ]; do
@@ -58,4 +61,3 @@ find "$input_dir" "${args[@]}" | while IFS= read -r file; do
     mkdir -p "$(dirname "$destination")"
     cp "$file" "$destination"
 done
-
