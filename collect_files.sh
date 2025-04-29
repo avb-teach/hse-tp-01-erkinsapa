@@ -7,7 +7,10 @@ shift 2
 
 while [ $# -gt 0 ]; do
     if [ "$1" = "--max_depth" ]; then
-        max_depth="\$2"
+        if ! [[ "$2" =~ ^[0-9]+$ ]]; then
+            exit 1
+        fi
+        max_depth="$2"
         shift 2
     else
         exit 1
@@ -16,14 +19,17 @@ done
 
 mkdir -p "$output_dir"
 declare -A counters
-
 args=(-type f)
-if [ $max_depth -ge 0 ]; then
-    args+=(-mindepth "$max_depth" -maxdepth "$max_depth")
-fi
 
-find "$input_dir" "${args[@]}" | while IFS= read -r file; do
+while IFS= read -r file; do
     relative_path="${file#$input_dir/}"
+    depth=$(awk -F/ '{print NF-1}' <<< "$relative_path")
+
+    if [ "$max_depth" -ge 0 ] && [ "$depth" -ge "$max_depth" ]; then
+        drop=$((depth - max_depth + 1))
+        relative_path=$(echo "$relative_path" | cut -d/ -f$((drop+1))-)
+    fi
+
     destination="$output_dir/$relative_path"
 
     if [ -e "$destination" ]; then
@@ -37,7 +43,7 @@ find "$input_dir" "${args[@]}" | while IFS= read -r file; do
             extension=""
         fi
 
-        if [ -z ${counters["$filename"]} ]; then
+        if [ -z "${counters["$filename"]}" ]; then
             counters["$filename"]=1
         else
             counters["$filename"]=$((counters["$filename"] + 1))
@@ -53,5 +59,5 @@ find "$input_dir" "${args[@]}" | while IFS= read -r file; do
 
     mkdir -p "$(dirname "$destination")"
     cp "$file" "$destination"
-done
+done < <(find "$input_dir" "${args[@]}")
 
