@@ -1,7 +1,10 @@
 #!/bin/bash
 
+
 input_dir="$1"
+
 output_dir="$2"
+
 max_depth=-1
 shift 2
 
@@ -18,19 +21,23 @@ while [ $# -gt 0 ]; do
 done
 
 mkdir -p "$output_dir"
+
 declare -A counters
+
 args=(-type f)
 
 while IFS= read -r file; do
-    relative_path="${file#$input_dir/}"
-    depth=$(awk -F/ '{print NF-1}' <<< "$relative_path")
+    relative="${file#$input_dir/}"
+
+    depth=$(awk -F/ '{print NF-1}' <<< "$relative")
 
     if [ "$max_depth" -ge 0 ] && [ "$depth" -ge "$max_depth" ]; then
         drop=$((depth - max_depth + 1))
-        relative_path=$(echo "$relative_path" | cut -d/ -f$((drop+1))-)
+        relative=$(echo "$relative" | cut -d/ -f$((drop+1))-)
     fi
 
-    destination="$output_dir/$relative_path"
+    destination="$output_dir/$relative"
+
 
     if [ -e "$destination" ]; then
         filename=$(basename "$destination")
@@ -58,6 +65,8 @@ while IFS= read -r file; do
     fi
 
     mkdir -p "$(dirname "$destination")"
+  
     cp "$file" "$destination"
+
 done < <(find "$input_dir" "${args[@]}")
 
