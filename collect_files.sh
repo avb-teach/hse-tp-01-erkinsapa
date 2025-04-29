@@ -2,14 +2,12 @@
 
 input_dir="$1"
 output_dir="$2"
-max_depth="$3"
+max_depth=-1
+
 shift 2
 
 while [ $# -gt 0 ]; do
     if [ "$1" = "--max_depth" ]; then
-        if ! [[ "$2" =~ ^[0-9]+$ ]]; then
-            exit 1
-        fi
         max_depth="\$2"
         shift 2
     else"
@@ -21,9 +19,9 @@ mkdir -p "$output_dir"
 
 declare -A file_counters
 
-find_args=(-type f)
+findargs=(-type f)
 if [ $max_depth -ge 0 ]; then
-    find_args+=(-maxdepth "$max_depth")
+    findargs+=(-maxdepth "$max_depth")
 fi
 
 find "$input_dir" "${find_args[@]}" | while IFS= read -r file; do
@@ -33,11 +31,11 @@ find "$input_dir" "${find_args[@]}" | while IFS= read -r file; do
     if [ -e "$destination" ]; then
         filename=$(basename "$destination")
         dir=$(dirname "$destination")
-        base_name="${filename%.*}"
+        base="${filename%.*}"
         extension="${filename##*.}"
 
         if [ "$base_name" = "$extension" ]; then
-            base_name="${filename}"
+            base="${filename}"
             extension=""
         fi
 
