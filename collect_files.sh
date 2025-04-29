@@ -22,7 +22,7 @@ declare -A counters
 
 args=(-type f)
 if [ $max_depth -ge 0 ]; then
-    args+=(-maxdepth "$max_depth")
+    args+=(-mindepth "$max_depth" -maxdepth "$max_depth")
 fi
 
 find "$input_dir" "${args[@]}" | while IFS= read -r file; do
@@ -35,7 +35,7 @@ find "$input_dir" "${args[@]}" | while IFS= read -r file; do
         base="${filename%.*}"
         extension="${filename##*.}"
 
-        if [ "$base" = "$extension" ];then
+        if [ "$base" = "$extension" ]; then
             base="${filename}"
             extension=""
         fi
