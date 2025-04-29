@@ -7,9 +7,6 @@ shift 2
 
 while [ $# -gt 0 ]; do
     if [ "$1" = "--max_depth" ]; then
-        if ! [[ "$2" =~ ^[0-9]+$ ]]; then
-            exit 1
-        fi
         max_depth="\$2"
         shift 2
     else
@@ -18,43 +15,40 @@ while [ $# -gt 0 ]; do
 done
 
 mkdir -p "$output_dir"
-declare -A counters
 
-args=(-type f)
-if [ $max_depth -ge 0 ]; then
-    args+=(-mindepth "$max_depth" -maxdepth "$max_depth")
-fi
+declare -A filec
 
-find "$input_dir" "${args[@]}" | while IFS= read -r file; do
-    relative_path="${file#$input_dir/}"
-    destination="$output_dir/$relative_path"
+find "$input_dir" ${max_depth:+-maxdepth "$max_depth"} | while IFS= read -r entry; do
+    if [[ -d "$entry" ]]; then
+        rel="${entry#$input_dir/}"
+        mkdir -p "$output_dir/$rel"
+    elif [[ -f "$entry" ]]; then
+        rel="${entry#$input_dir/}"
+        dest="$output_dir/$rel"
+        filename=$(basename "$dest")
+        dir==$(dirname "$dest")
+        mkdir -p "$dir"
 
-    if [ -e "$destination" ]; then
-        filename=$(basename "$destination")
-        dir=$(dirname "$destination")
-        base="${filename%.*}"
-        extension="${filename##*.}"
+        if [[ -e "$dest" ]]; then
+            base="${filename%.*}"
+            ext="${filename##*.}"
 
-        if [ "$base" = "$extension" ]; then
-            base="${filename}"
-            extension=""
+            if [[ "$base" == "$ext" ]]; then
+                base="$filename"
+                ext=""
+            fi
+
+            filec["$filename"]=$((fileс["$filename"] + 1))
+            suffix=${filec["$filename"]}
+
+            if [[ -n "$ext" ]]; then
+                dest="$dir_path/${base}_$suffix.$ext"
+            else
+                dest="$dir_path/${base}_$suffix"
+            fi
         fi
 
-        if [ -z ${counters["$filename"]} ]; then
-            counters["$filename"]=1
-        else
-            counters["$filename"]=$((counters["$filename"] + 1))
-        fi
-
-        suffix=${counters["$filename"]}
-        if [ -n "$extension" ]; then
-            destination="$dir/${base}_$suffix.$extension"
-        else
-            destination="$dir/${base}_$suffix"
-        fi
+        cp "$entry" "$dest"
     fi
-
-    mkdir -p "$(dirname "$destination")"
-    cp "$file" "$destination"
 done
 
