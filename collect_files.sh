@@ -1,11 +1,8 @@
 #!/bin/bash
 
 input_dir="$1"
-
 output_dir="$2"
-
 max_depth=-1
-
 shift 2
 
 while [ $# -gt 0 ]; do
@@ -21,7 +18,6 @@ while [ $# -gt 0 ]; do
 done
 
 mkdir -p "$output_dir"
-
 declare -A counters
 
 args=(-type f)
@@ -39,7 +35,7 @@ find "$input_dir" "${args[@]}" | while IFS= read -r file; do
         base="${filename%.*}"
         extension="${filename##*.}"
 
-        if [ "$base" = "$extension" ]; then
+        if [ "$base" = "$extension" ];then
             base="${filename}"
             extension=""
         fi
@@ -61,3 +57,4 @@ find "$input_dir" "${args[@]}" | while IFS= read -r file; do
     mkdir -p "$(dirname "$destination")"
     cp "$file" "$destination"
 done
+
