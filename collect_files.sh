@@ -1,25 +1,18 @@
 #!/bin/bash
 
-if [ $# -lt 2 ]; then
-    echo "Usage: $0 <input_dir> <output_dir> [--max_depth N]"
-    exit 1
-fi
-
 input_dir="$1"
 output_dir="$2"
-max_depth=-1
+max_depth="$3"
 shift 2
 
 while [ $# -gt 0 ]; do
     if [ "$1" = "--max_depth" ]; then
         if ! [[ "$2" =~ ^[0-9]+$ ]]; then
-            echo "Error: --max_depth should be a positive integer"
             exit 1
         fi
         max_depth="\$2"
         shift 2
-    else
-        echo "Unknown argument: \$1"
+    else"
         exit 1
     fi
 done
@@ -66,5 +59,4 @@ find "$input_dir" "${find_args[@]}" | while IFS= read -r file; do
     cp "$file" "$destination"
 done
 
-echo "Files copied to $output_dir with depth limit $max_depth"
 
